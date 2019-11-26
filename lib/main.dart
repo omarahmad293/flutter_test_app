@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:test_app/pages.dart';
-import 'pages.dart';
-//import 'package:flutter/services.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:auto_size_text/auto_size_text.dart';
+import 'package:device_info/device_info.dart';
+import 'functions.dart';
+import 'package:flutter/services.dart';
 
 void main() {
   runApp(MyApp());
@@ -14,7 +16,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Comparison',
       theme: ThemeData(primarySwatch: Colors.blue, fontFamily: 'ProductSans'),
-      home: MyHomePage(title: 'Flutter Demo Home Page'),
+      home: MyHomePage(title: 'Comparison App'),
     );
   }
 }
@@ -30,7 +32,17 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
   int _index = 0;
-  final List<Widget> _children = [performancePage,locationPage, notificationPage, deviceInfoPage];
+
+  int _n;
+  BigInt _fibo = BigInt.from(0);
+  Duration _time = Duration();
+
+  Position _position = Position();
+  Placemark _location = Placemark();
+
+  String _pasted = "";
+
+  String _android = "";
 
   @override
   void initState() {
@@ -51,7 +63,7 @@ class _MyHomePageState extends State<MyHomePage> {
             AlertDialog(title: Text("TEST"), content: Text("test")));
   }
 
-  void _buttonFunction() async {
+  void notify() async {
     var android =
         AndroidNotificationDetails('channel id', 'channel name', 'description');
     var ios = IOSNotificationDetails();
@@ -66,11 +78,108 @@ class _MyHomePageState extends State<MyHomePage> {
       appBar: AppBar(
         title: Text(widget.title),
       ),
-      body: _children[_index],
-      floatingActionButton: FloatingActionButton(
-        onPressed: _buttonFunction,
-        tooltip: 'Get Position',
-        child: Icon(Icons.camera),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: <Widget>[
+            Container(
+              child: Column(children: <Widget>[
+                Text('Fibo:'),
+                TextField(
+                  keyboardType: TextInputType.number,
+                  onChanged: (i) {
+                    setState(() {
+                      _n = int.parse(i);
+                    });
+                  },
+                ),
+                RaisedButton(
+                  child: Text("Calculate Fibonacci"),
+                  onPressed: () {
+                    setState(() {
+                      Map<String, dynamic> temp = fibonacci(_n);
+                      _fibo = temp['f'];
+                      _time = temp['t'];
+                    });
+                  },
+                ),
+                AutoSizeText(
+                  _fibo.toString(),
+                  maxLines: 2,
+                ),
+                Text("Calculation took $_time seconds"),
+              ]),
+            ),
+            Container(
+              child: Column(children: <Widget>[
+                RaisedButton(
+                  child: Text("Get Position"),
+                  onPressed: () async {
+                    Position p = await getPosition();
+                    List<Placemark> l = await Geolocator()
+                        .placemarkFromCoordinates(p.longitude, p.latitude);
+                    setState(() {
+                      _position = p;
+                      _location = l[0];
+                    });
+                  },
+                ),
+                Text("${_position.longitude}, ${_position.latitude}"),
+                Text("${_location.country}")
+              ]),
+            ),
+            Container(
+              child: Column(
+                children: <Widget>[
+                  RaisedButton(
+                    child: Text("Notify"),
+                    onPressed: notify,
+                  )
+                ],
+              ),
+            ),
+            Container(
+              child: RaisedButton(
+                child: Text("Vibrate"),
+                onPressed: HapticFeedback.lightImpact,
+              ),
+            ),
+            Container(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  Text(_pasted ?? "null"),
+                  RaisedButton(
+                    child: Text("Paste"),
+                    onPressed: () {
+                      setState(() async {
+                        ClipboardData c = await Clipboard.getData('text/plain');
+                        _pasted = c.text;
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  Text(_android ?? "null"),
+                  RaisedButton(
+                    child: Text("Device Info"),
+                    onPressed: () async {
+                      AndroidDeviceInfo android = await getDeviceInfo();
+                      setState(() {
+                        _android = android.model;
+                      });
+                    },
+                  )
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _index,
@@ -81,6 +190,11 @@ class _MyHomePageState extends State<MyHomePage> {
         },
         type: BottomNavigationBarType.shifting,
         items: <BottomNavigationBarItem>[
+          BottomNavigationBarItem(
+            icon: Icon(Icons.speaker),
+            backgroundColor: Colors.red,
+            title: Text("Performance"),
+          ),
           BottomNavigationBarItem(
             icon: Icon(Icons.location_on),
             backgroundColor: Colors.red,

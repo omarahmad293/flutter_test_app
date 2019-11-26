@@ -4,6 +4,7 @@ Widget performancePage = Center(
   child: Column(
     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
     children: <Widget>[
+      Text("Fibonacci:"),
       TextField(
         keyboardType: TextInputType.number,
       )
@@ -23,6 +24,11 @@ Widget locationPage = Center(
             'null',
           ),
         ],
+      ),
+      RaisedButton(
+        onPressed: ()async {
+          //Position p = await getPosition();           
+        },
       ),
     ],
   ),
